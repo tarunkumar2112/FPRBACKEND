@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order History</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-4">
+      <input id="search" type="text" placeholder="Search orders..." class="border border-gray-300 rounded px-3 py-2 w-1/3" />
+      <select id="statusFilter" class="border border-gray-300 rounded px-3 py-2">
+        <option value="">All Statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="Processing">Processing</option>
+        <option value="Completed">Completed</option>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white shadow rounded-lg overflow-hidden">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="text-left px-4 py-2">Name</th>
+            <th class="text-left px-4 py-2">Make</th>
+            <th class="text-left px-4 py-2">Model</th>
+            <th class="text-left px-4 py-2">Caliber</th>
+            <th class="text-left px-4 py-2">Quantity</th>
+            <th class="text-left px-4 py-2">Status</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const apiEndpoint = 'http://localhost:8888/.netlify/functions/fetchOrder';
+    const params = new URLSearchParams(window.location.search);
+    const memberId = params.get('id');
+
+    const searchInput = document.getElementById('search');
+    const statusFilter = document.getElementById('statusFilter');
+    const tableBody = document.getElementById('ordersTableBody');
+
+    let allOrders = [];
+
+    function renderTable(data) {
+      tableBody.innerHTML = '';
+      data.forEach(order => {
+        const row = document.createElement('tr');
+        row.className = 'border-t';
+
+        row.innerHTML = `
+          <td class="px-4 py-2">${order.Name}</td>
+          <td class="px-4 py-2">${order['Firearm Make']}</td>
+          <td class="px-4 py-2">${order['Firearm Model\r']}</td>
+          <td class="px-4 py-2">${order.Caliber}</td>
+          <td class="px-4 py-2">${order.Quantity}</td>
+          <td class="px-4 py-2">
+            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.Status)}">
+              ${order.Status}
+            </span>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function getStatusColor(status) {
+      switch (status) {
+        case 'Pending': return 'bg-yellow-100 text-yellow-800';
+        case 'Processing': return 'bg-blue-100 text-blue-800';
+        case 'Completed': return 'bg-green-100 text-green-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    }
+
+    function filterAndRender() {
+      const search = searchInput.value.toLowerCase();
+      const status = statusFilter.value;
+      const filtered = allOrders.filter(order =>
+        (!status || order.Status === status) &&
+        Object.values(order).some(val =>
+          String(val).toLowerCase().includes(search)
+        )
+      );
+      renderTable(filtered);
+    }
+
+    // Fetch and filter
+    fetch(apiEndpoint)
+      .then(res => res.json())
+      .then(data => {
+        allOrders = data.filter(order => order.MemberID === memberId);
+        renderTable(allOrders);
+      });
+
+    searchInput.addEventListener('input', filterAndRender);
+    statusFilter.addEventListener('change', filterAndRender);
+  </script>
+</body>
+</html>
